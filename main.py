@@ -6,15 +6,15 @@ Authors: Roberto Ciaranfi, Giovanni Passaleva, Lucio Anderlini
 """
 
 import time
+
+import fastapi
+
 from RelaisUpdater import RelaisUpdater
 from fastapi import FastAPI
 
 app = FastAPI()
 relais_board = RelaisUpdater()
-try:
-    relais_board.start()
-finally:
-    relais_board.kill()
+relais_board.start()
 
 
 @app.get("/")
@@ -22,18 +22,23 @@ async def root():
     return "8CH RELE MODULE Controller (by Ciaranfi with Love)"
 
 @app.get("/set")
-async def set(q: int):
-    relais_board.status = chr(i)
+async def set_status(q: str):
+    try:
+        relais_board.status = int(q, base=2)
+    except ValueError as e:
+        fastapi.HTTPException(str(e))
+
     return "Ok"
 
 
 @app.get("/show")
 async def run_show(n_iterations: int = 2):
-    for loop in range(n_iterations):
-        for i in list(range(8)) + list(range(8))[::-1]:
-            relais_board.status = 0
-            relais_board[i] = True
-            time.sleep(0.15)
+    print ("Show")
+    relais_board.status = 0xff
+    time.sleep(0.5)
+    relais_board.status = 0x0
+    time.sleep(0.5)
 
-    relais_board.status = 0
-
+@app.on_event("shutdown")
+def shutdown():
+    relais_board.kill()
